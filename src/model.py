@@ -19,7 +19,7 @@ def build_model(cfg, device, rank):
 
     model = AutoModelForCausalLM.from_pretrained(
         model_source,
-        torch_dtype=dtype,
+        dtype=dtype,
         trust_remote_code=True,
     )
 
