@@ -1,0 +1,8 @@
+torch
+transformers>=4.37.0
+datasets
+accelerate
+sentencepiece
+safetensors
+pyyaml
+tqdm

@@ -1,0 +1,29 @@
+model_name: "Qwen/Qwen2.5-3B"
+output_dir: "./outputs/qwen25_3b_ddp_debug"
+
+dataset_name: "roneneldan/TinyStories"
+train_split: "train[:2000]"
+eval_split: "validation[:200]"
+
+max_length: 256
+epochs: 1
+
+micro_batch_size: 1
+grad_accum_steps: 8
+
+learning_rate: 1.0e-5
+weight_decay: 0.1
+warmup_ratio: 0.03
+grad_clip: 1.0
+
+num_workers: 2
+seed: 42
+
+dtype: "bfloat16"
+
+log_every: 2
+save_every: 20
+eval_every: 10
+
+resume_from: null
+save_optimizer: true
