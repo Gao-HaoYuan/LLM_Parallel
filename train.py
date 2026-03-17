@@ -24,6 +24,8 @@ def parse_args():
     parser.add_argument("--save_every", type=int, default=None)
     parser.add_argument("--eval_every", type=int, default=None)
     parser.add_argument("--resume_from", type=str, default=None)
+    parser.add_argument("--enable_throughput_logging", action=argparse.BooleanOptionalAction, default=None)
+
     return parser.parse_args()
 
 

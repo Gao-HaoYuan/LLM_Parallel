@@ -24,6 +24,7 @@ dtype: "bfloat16"
 log_every: 2
 save_every: 20
 eval_every: 10
+enable_throughput_logging: true
 
 resume_from: null
 save_optimizer: true

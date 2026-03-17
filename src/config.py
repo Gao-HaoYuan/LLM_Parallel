@@ -34,6 +34,7 @@ class TrainConfig:
 
     resume_from: Optional[str]
     save_optimizer: bool
+    enable_throughput_logging: bool = True
 
 
 def load_config(path: str) -> TrainConfig:

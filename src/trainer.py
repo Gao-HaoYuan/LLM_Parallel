@@ -1,7 +1,9 @@
 import os
+import time
 from contextlib import nullcontext
 
 import torch
+import torch.distributed as dist
 from transformers import get_cosine_schedule_with_warmup
 
 from .dist_utils import log
@@ -29,6 +31,8 @@ def train(cfg, model, tokenizer, train_loader, train_sampler, eval_loader, devic
     )
 
     global_step = load_checkpoint_if_needed(cfg, model, optimizer, scheduler, rank)
+    last_log_time = time.perf_counter()
+    last_log_tokens = 0
 
     metrics_logger = None
     if rank == 0:
@@ -47,6 +51,12 @@ def train(cfg, model, tokenizer, train_loader, train_sampler, eval_loader, devic
 
         for step, batch in enumerate(train_loader):
             batch = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
+
+            if cfg.enable_throughput_logging:
+                local_tokens = batch["input_ids"].numel()
+                tokens_tensor = torch.tensor([local_tokens], device=device, dtype=torch.long)
+                dist.all_reduce(tokens_tensor, op=dist.ReduceOp.SUM)
+                last_log_tokens += tokens_tensor.item()
 
             is_sync_step = ((step + 1) % cfg.grad_accum_steps == 0)
             sync_context = nullcontext() if is_sync_step else model.no_sync()
@@ -69,17 +79,29 @@ def train(cfg, model, tokenizer, train_loader, train_sampler, eval_loader, devic
                     lr = scheduler.get_last_lr()[0]
                     msg = (
                         f"[epoch {epoch}] step={global_step}/{max_train_steps} "
-                        f"loss={real_loss:.4f} lr={lr:.6e} grad_norm={float(grad_norm):.4f}"
+                        f"loss={real_loss:.4f} lr={lr:.6e} "
+                        f"grad_norm={float(grad_norm):.4f}"
                     )
-                    print(msg, flush=True)
-                    metrics_logger.log({
+                    metrics = {
                         "type": "train",
                         "epoch": epoch,
                         "step": global_step,
                         "loss": real_loss,
                         "lr": lr,
                         "grad_norm": float(grad_norm),
-                    })
+                    }
+
+                    if cfg.enable_throughput_logging:
+                        now = time.perf_counter()
+                        elapsed = now - last_log_time
+                        tokens_per_sec = last_log_tokens / elapsed if elapsed > 0 else 0.0
+                        msg += f" tokens/sec={tokens_per_sec:.2f}"
+                        metrics["tokens_per_sec"] = tokens_per_sec
+                        last_log_time = now
+                        last_log_tokens = 0
+
+                    print(msg, flush=True)
+                    metrics_logger.log(metrics)
 
                 if rank == 0 and global_step % cfg.save_every == 0:
                     save_checkpoint(cfg, model, tokenizer, optimizer, scheduler, global_step, rank)
