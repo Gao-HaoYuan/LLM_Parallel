@@ -52,3 +52,13 @@ torchrun --standalone --nproc_per_node=8 train.py \
   --config configs/qwen25_3b_base.yaml \
   --resume_from ./outputs/qwen25_3b_ddp_base/step-200
 ```
+
+## Infer && Chat
+```
+python scripts/infer.py \
+  --model_path ./outputs/qwen25_3b_ddp_base/final \
+  --prompt "Large language model training uses data parallelism because"
+
+
+python scripts/chat.py --model_path ./outputs/qwen25_3b_ddp_base/final
+```
