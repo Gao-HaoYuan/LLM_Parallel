@@ -44,13 +44,20 @@ def build_model(cfg, device, rank):
     return FSDP(
         model,
         auto_wrap_policy=auto_wrap_policy,
-        sharding_strategy=ShardingStrategy.FULL_SHARD,
+
+        # Sharding strategy trade-off:
+        # - FULL_SHARD: shards params, grads, and optimizer state; lowest
+        #   memory usage, but usually the highest communication cost.
+        # - SHARD_GRAD_OP: uses more memory than FULL_SHARD, but usually
+        #   reduces communication overhead and improves training speed.
+        sharding_strategy=ShardingStrategy.SHARD_GRAD_OP,
         mixed_precision=mixed_precision,
 
-        # overlap communication
+        # Prefetch helps overlap communication with compute, but the real gain
+        # depends on model size, sequence length, and interconnect bandwidth.
         forward_prefetch=True,
         backward_prefetch=BackwardPrefetch.BACKWARD_PRE,
-        
+
         device_id=device,
         limit_all_gathers=True,
         use_orig_params=True,
