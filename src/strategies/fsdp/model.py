@@ -6,6 +6,7 @@ from torch.distributed.fsdp import (
     FullyShardedDataParallel as FSDP,
     MixedPrecision,
     ShardingStrategy,
+    BackwardPrefetch,
 )
 from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
 from transformers import AutoModelForCausalLM
@@ -45,6 +46,11 @@ def build_model(cfg, device, rank):
         auto_wrap_policy=auto_wrap_policy,
         sharding_strategy=ShardingStrategy.FULL_SHARD,
         mixed_precision=mixed_precision,
+
+        # overlap communication
+        forward_prefetch=True,
+        backward_prefetch=BackwardPrefetch.BACKWARD_PRE,
+        
         device_id=device,
         limit_all_gathers=True,
         use_orig_params=True,
