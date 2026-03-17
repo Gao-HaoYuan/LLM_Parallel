@@ -4,6 +4,7 @@ import importlib
 from src.config import load_config, apply_overrides
 from src.dist_utils import setup_distributed, cleanup_distributed, log, set_seed
 from src.data import build_tokenizer, build_dataloaders
+from src.strategies.trainer import train
 
 
 def parse_args():
@@ -33,7 +34,7 @@ def main():
     args = parse_args()
     cfg = load_config(args.config)
     cfg = apply_overrides(cfg, args)
-    model_module, trainer_module = _load_strategy_modules(cfg.strategy)
+    model_module, checkpoint_module = _load_strategy_modules(cfg.strategy)
 
     local_rank, rank, world_size, device = setup_distributed()
     set_seed(cfg.seed + rank)
@@ -48,7 +49,7 @@ def main():
     train_loader, train_sampler, eval_loader = build_dataloaders(cfg, tokenizer, rank, world_size)
     model = model_module.build_model(cfg, device, rank)
 
-    trainer_module.train(
+    train(
         cfg=cfg,
         model=model,
         tokenizer=tokenizer,
@@ -57,6 +58,7 @@ def main():
         eval_loader=eval_loader,
         device=device,
         rank=rank,
+        checkpoint_ops=checkpoint_module,
     )
 
     cleanup_distributed()
@@ -64,8 +66,8 @@ def main():
 
 def _load_strategy_modules(strategy: str):
     model_module = importlib.import_module(f"src.strategies.{strategy}.model")
-    trainer_module = importlib.import_module(f"src.strategies.{strategy}.trainer")
-    return model_module, trainer_module
+    checkpoint_module = importlib.import_module(f"src.strategies.{strategy}.checkpoint")
+    return model_module, checkpoint_module
 
 
 if __name__ == "__main__":

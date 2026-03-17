@@ -6,13 +6,12 @@ import torch
 import torch.distributed as dist
 from transformers import get_cosine_schedule_with_warmup
 
-from ...dist_utils import log
-from ...evaluator import evaluate
-from ...logger import JsonlLogger
-from .checkpoint import load_checkpoint_if_needed, save_checkpoint
+from ..dist_utils import log
+from ..evaluator import evaluate
+from ..logger import JsonlLogger
 
 
-def train(cfg, model, tokenizer, train_loader, train_sampler, eval_loader, device, rank):
+def train(cfg, model, tokenizer, train_loader, train_sampler, eval_loader, device, rank, checkpoint_ops):
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=cfg.learning_rate,
@@ -30,7 +29,7 @@ def train(cfg, model, tokenizer, train_loader, train_sampler, eval_loader, devic
         num_training_steps=max_train_steps,
     )
 
-    global_step = load_checkpoint_if_needed(cfg, model, optimizer, scheduler, rank)
+    global_step = checkpoint_ops.load_checkpoint_if_needed(cfg, model, optimizer, scheduler, rank)
     last_log_time = time.perf_counter()
     last_log_tokens = 0
 
@@ -103,8 +102,10 @@ def train(cfg, model, tokenizer, train_loader, train_sampler, eval_loader, devic
                     print(msg, flush=True)
                     metrics_logger.log(metrics)
 
-                if rank == 0 and global_step % cfg.save_every == 0:
-                    save_checkpoint(cfg, model, tokenizer, optimizer, scheduler, global_step, rank)
+                if checkpoint_ops.should_save_on_step(rank) and global_step % cfg.save_every == 0:
+                    checkpoint_ops.save_checkpoint(
+                        cfg, model, tokenizer, optimizer, scheduler, global_step, rank
+                    )
 
                 if global_step % cfg.eval_every == 0:
                     eval_loss, eval_ppl = evaluate(model, eval_loader, device)
@@ -121,10 +122,4 @@ def train(cfg, model, tokenizer, train_loader, train_sampler, eval_loader, devic
                             "eval_ppl": eval_ppl,
                         })
 
-    if rank == 0:
-        final_dir = os.path.join(cfg.output_dir, "final")
-        os.makedirs(final_dir, exist_ok=True)
-        model.module.save_pretrained(final_dir)
-        tokenizer.save_pretrained(final_dir)
-        torch.save({"global_step": global_step}, os.path.join(final_dir, "trainer_state.pt"))
-        print(f"Training finished. Final checkpoint saved to {final_dir}", flush=True)
+    checkpoint_ops.save_final(cfg, model, tokenizer, global_step, rank)

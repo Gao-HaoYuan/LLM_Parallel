@@ -21,6 +21,22 @@ def save_checkpoint(cfg, model, tokenizer, optimizer, scheduler, global_step, ra
     print(f"Saved checkpoint to {ckpt_dir}", flush=True)
 
 
+def save_final(cfg, model, tokenizer, global_step, rank):
+    if rank != 0:
+        return
+
+    final_dir = os.path.join(cfg.output_dir, "final")
+    os.makedirs(final_dir, exist_ok=True)
+    model.module.save_pretrained(final_dir)
+    tokenizer.save_pretrained(final_dir)
+    torch.save({"global_step": global_step}, os.path.join(final_dir, "trainer_state.pt"))
+    print(f"Training finished. Final checkpoint saved to {final_dir}", flush=True)
+
+
+def should_save_on_step(rank):
+    return rank == 0
+
+
 def load_checkpoint_if_needed(cfg, model, optimizer, scheduler, rank):
     if not cfg.resume_from:
         return 0

@@ -72,3 +72,17 @@ def save_model_and_tokenizer(model, tokenizer, output_dir, rank):
     if rank == 0:
         model.module.save_pretrained(output_dir, state_dict=state_dict)
         tokenizer.save_pretrained(output_dir)
+
+
+def save_final(cfg, model, tokenizer, global_step, rank):
+    final_dir = os.path.join(cfg.output_dir, "final")
+    if rank == 0:
+        os.makedirs(final_dir, exist_ok=True)
+    save_model_and_tokenizer(model, tokenizer, final_dir, rank)
+    if rank == 0:
+        torch.save({"global_step": global_step}, os.path.join(final_dir, "trainer_state.pt"))
+        print(f"Training finished. Final checkpoint saved to {final_dir}", flush=True)
+
+
+def should_save_on_step(rank):
+    return True
