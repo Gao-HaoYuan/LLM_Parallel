@@ -53,7 +53,7 @@ def train(cfg, model, tokenizer, train_loader, train_sampler, eval_loader, devic
             batch = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
 
             if cfg.enable_throughput_logging:
-                local_tokens = batch["input_ids"].numel()
+                local_tokens = int(batch["attention_mask"].sum().item())
                 tokens_tensor = torch.tensor([local_tokens], device=device, dtype=torch.long)
                 dist.all_reduce(tokens_tensor, op=dist.ReduceOp.SUM)
                 last_log_tokens += tokens_tensor.item()
