@@ -1,5 +1,6 @@
 import os
 import torch
+from transformers import AutoModelForCausalLM
 
 def save_checkpoint(cfg, model, tokenizer, optimizer, scheduler, global_step, rank):
     if rank != 0:
@@ -44,6 +45,12 @@ def load_checkpoint_if_needed(cfg, model, optimizer, scheduler, rank):
     trainer_state_path = os.path.join(cfg.resume_from, "trainer_state.pt")
     if rank == 0:
         print(f"Resuming from {cfg.resume_from}", flush=True)
+
+    resume_model = AutoModelForCausalLM.from_pretrained(
+        cfg.resume_from,
+        trust_remote_code=True,
+    )
+    model.module.load_state_dict(resume_model.state_dict())
 
     state = torch.load(trainer_state_path, map_location="cpu")
 

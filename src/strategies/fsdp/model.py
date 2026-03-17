@@ -1,4 +1,3 @@
-import os
 from functools import partial
 
 import torch
@@ -17,7 +16,7 @@ from ...dist_utils import log
 
 def build_model(cfg, device, rank):
     log(rank, f"Loading model {cfg.model_name} with FSDP ...")
-    model_source = _resolve_model_source(cfg, rank)
+    model_source = ensure_model_assets(cfg.model_name, rank)
 
     if cfg.dtype == "bfloat16":
         dtype = torch.bfloat16
@@ -62,14 +61,6 @@ def build_model(cfg, device, rank):
         limit_all_gathers=True,
         use_orig_params=True,
     )
-
-
-def _resolve_model_source(cfg, rank):
-    if cfg.resume_from and os.path.exists(os.path.join(cfg.resume_from, "config.json")):
-        log(rank, f"Loading model weights from resume checkpoint {cfg.resume_from}")
-        return cfg.resume_from
-    return ensure_model_assets(cfg.model_name, rank)
-
 
 def _build_auto_wrap_policy(model):
     transformer_layers = getattr(getattr(model, "model", None), "layers", None)
