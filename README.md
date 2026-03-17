@@ -30,12 +30,12 @@ python scripts/env_check.py
 
 ## Run debug
 ```
-bash run.sh configs/qwen25_3b_debug.yaml
+bash run.sh --config configs/qwen25_3b_debug.yaml
 ```
 
 ## Run base
 ```
-bash run.sh configs/qwen25_3b_base.yaml
+bash run.sh --config configs/qwen25_3b_base.yaml
 ```
 
 ## Override config from CLI

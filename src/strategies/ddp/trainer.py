@@ -6,10 +6,10 @@ import torch
 import torch.distributed as dist
 from transformers import get_cosine_schedule_with_warmup
 
-from .dist_utils import log
-from .logger import JsonlLogger
-from .checkpoint import save_checkpoint, load_checkpoint_if_needed
-from .evaluator import evaluate
+from ...dist_utils import log
+from ...evaluator import evaluate
+from ...logger import JsonlLogger
+from .checkpoint import load_checkpoint_if_needed, save_checkpoint
 
 
 def train(cfg, model, tokenizer, train_loader, train_sampler, eval_loader, device, rank):

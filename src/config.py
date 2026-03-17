@@ -34,6 +34,7 @@ class TrainConfig:
 
     resume_from: Optional[str]
     save_optimizer: bool
+    strategy: str = "ddp"
     enable_throughput_logging: bool = True
 
 

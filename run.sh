@@ -7,6 +7,4 @@ export OMP_NUM_THREADS=8
 export NCCL_DEBUG=WARN
 export PYTHONUNBUFFERED=1
 
-CONFIG=${1:-configs/qwen25_3b_base.yaml}
-
-torchrun --standalone --nproc_per_node=8 train.py --config "${CONFIG}"
+torchrun --standalone --nproc_per_node=8 train.py "$@"

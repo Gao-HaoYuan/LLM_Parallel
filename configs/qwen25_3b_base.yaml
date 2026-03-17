@@ -1,3 +1,4 @@
+strategy: "ddp"
 model_name: "Qwen/Qwen2.5-3B"
 output_dir: "./outputs/qwen25_3b_ddp_base"
 

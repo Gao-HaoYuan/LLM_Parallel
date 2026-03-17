@@ -1,10 +1,9 @@
 import argparse
+import importlib
 
 from src.config import load_config, apply_overrides
 from src.dist_utils import setup_distributed, cleanup_distributed, log, set_seed
 from src.data import build_tokenizer, build_dataloaders
-from src.model import build_model
-from src.trainer import train
 
 
 def parse_args():
@@ -12,6 +11,7 @@ def parse_args():
     parser.add_argument("--config", type=str, required=True)
 
     # 可选覆盖项
+    parser.add_argument("--strategy", type=str, choices=["ddp", "fsdp"], default=None)
     parser.add_argument("--model_name", type=str, default=None)
     parser.add_argument("--output_dir", type=str, default=None)
     parser.add_argument("--max_length", type=int, default=None)
@@ -33,20 +33,22 @@ def main():
     args = parse_args()
     cfg = load_config(args.config)
     cfg = apply_overrides(cfg, args)
+    model_module, trainer_module = _load_strategy_modules(cfg.strategy)
 
     local_rank, rank, world_size, device = setup_distributed()
     set_seed(cfg.seed + rank)
 
     log(rank, f"Loaded config from {args.config}")
+    log(rank, f"Strategy: {cfg.strategy}")
     log(rank, f"Model: {cfg.model_name}")
     log(rank, f"Output dir: {cfg.output_dir}")
     log(rank, f"World size: {world_size}")
 
     tokenizer = build_tokenizer(cfg, rank)
     train_loader, train_sampler, eval_loader = build_dataloaders(cfg, tokenizer, rank, world_size)
-    model = build_model(cfg, device, rank)
+    model = model_module.build_model(cfg, device, rank)
 
-    train(
+    trainer_module.train(
         cfg=cfg,
         model=model,
         tokenizer=tokenizer,
@@ -58,6 +60,12 @@ def main():
     )
 
     cleanup_distributed()
+
+
+def _load_strategy_modules(strategy: str):
+    model_module = importlib.import_module(f"src.strategies.{strategy}.model")
+    trainer_module = importlib.import_module(f"src.strategies.{strategy}.trainer")
+    return model_module, trainer_module
 
 
 if __name__ == "__main__":

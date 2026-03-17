@@ -1,7 +1,6 @@
 import os
 import torch
 
-
 def save_checkpoint(cfg, model, tokenizer, optimizer, scheduler, global_step, rank):
     if rank != 0:
         return
@@ -12,9 +11,7 @@ def save_checkpoint(cfg, model, tokenizer, optimizer, scheduler, global_step, ra
     model.module.save_pretrained(ckpt_dir)
     tokenizer.save_pretrained(ckpt_dir)
 
-    state = {
-        "global_step": global_step,
-    }
+    state = {"global_step": global_step}
 
     if cfg.save_optimizer:
         state["optimizer"] = optimizer.state_dict()
@@ -39,5 +36,4 @@ def load_checkpoint_if_needed(cfg, model, optimizer, scheduler, rank):
     if cfg.save_optimizer and "scheduler" in state:
         scheduler.load_state_dict(state["scheduler"])
 
-    global_step = state.get("global_step", 0)
-    return global_step
+    return state.get("global_step", 0)
